@@ -1,0 +1,29 @@
+# Dependencies
+/node_modules
+
+# Environment variables file (VERY IMPORTANT!)
+.env
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Optional diagnostics reporting directories
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# Optional editor directories and files
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.sublime-workspace
+.idea/*
+
+# Optional Operating System files
+.DS_Store
+Thumbs.db
