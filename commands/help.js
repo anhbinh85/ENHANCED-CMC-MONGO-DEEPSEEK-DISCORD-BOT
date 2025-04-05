@@ -82,6 +82,7 @@
 
 // commands/help.js
 const { EmbedBuilder } = require('discord.js');
+const TOP_N_WHALES_FOR_AI = parseInt(process.env.TOP_N_WHALES_FOR_AI || "20"); // Get limit for help text
 
 // Command prefixes (Ensure these match main.js)
 const whalePrefix = "!whale";
@@ -98,18 +99,19 @@ async function handleHelpCommand(message) {
         .addFields(
             // Updated Whale Watcher Section
             {
-                name: `🐳 Whale Watcher (\`${whalePrefix}\`)`,
-                value: `Analyzes large BTC transactions (>1 BTC) from the database.\n`+
-                       `Returns the **Top 10** matching transactions, sorted by **value (highest first)** within the filter.\n`+
+                name: `🐳 Whale Watcher (\`${whalePrefix}\`) - PAID Tier`, // Still assume Paid?
+                value: `Provides AI summary & analysis of large BTC transactions (>1 BTC) based on your filter (time, block, address, value). Enriches data with known wallet labels & calculates overall stats.\n`+
+                       `Returns AI analysis based on **overall summary** + **Top ${TOP_N_WHALES_FOR_AI} transactions by value**. Full details for Top ${TOP_N_WHALES_FOR_AI} attached as CSV.\n` +
+                       `*Requires Paid Membership.*\n` +
                        `**Examples:**\n` +
-                       `\`${whalePrefix} latest\` (Top 10 overall)\n` +
+                       `\`${whalePrefix} latest\`\n` +
                        `\`${whalePrefix} last hour\`\n` +
-                       `\`${whalePrefix} today\`\n` +
-                       `\`${whalePrefix} yesterday\`\n` +
+                       `\`${whalePrefix} last 7 days\`\n` +
+                       `\`${whalePrefix} last month\`\n` +
                        `\`${whalePrefix} in block 1234567\`\n` +
+                       `\`${whalePrefix} latest block\`\n`+
                        `\`${whalePrefix} address <address>\`\n` +
-                       `\`${whalePrefix} involving <address> last 24 hours\`\n` + // Example combination
-                       `\`${whalePrefix} value > 50000000000\` (Value in satoshis)\n` +
+                       `\`${whalePrefix} value > 50000000000\`\n` +
                        `\`${whalePrefix} hash <tx_hash>\``
             },
             // Updated CoinMarketCap Section (DEX Removed, more examples)
