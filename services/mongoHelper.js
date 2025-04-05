@@ -168,4 +168,54 @@ async function getWhaleSummaryAndTopTransactions(filter = {}, limitTopN = 20) {
 }
 
 
-module.exports = { getMongoClient, queryCollection, closeDatabaseConnection, getLabelsForAddresses, getWhaleSummaryAndTopTransactions, WHALE_TRANSFERS_COLLECTION: process.env.COLLECTION_NAME, WALLET_LABEL_COLLECTION: WALLET_LABEL_COLLECTION };
+// --- Function to get latest block number ---
+async function getLatestBlockNumber() {
+    if (!WHALE_TX_COLLECTION || !DB_NAME) throw new Error("DB or Whale Collection name missing.");
+    let mongoClient;
+    try {
+        mongoClient = await getMongoClient();
+        const db = mongoClient.db(DB_NAME);
+        const collection = db.collection(WHALE_TX_COLLECTION);
+        console.log(`[MongoHelper] Finding latest block number in ${WHALE_TX_COLLECTION}...`);
+        // Ensure 'block' field is indexed!
+        const latestTx = await collection.findOne({}, { sort: { block: -1 }, projection: { block: 1 } });
+        if (latestTx && (latestTx.block !== null && latestTx.block !== undefined)) {
+            // Handle BSON Long/Int or regular number
+            const blockNum = typeof latestTx.block === 'object' ? Number(latestTx.block) : latestTx.block;
+            console.log(`[MongoHelper] Latest block found: ${blockNum}`);
+            return blockNum;
+        } else {
+             console.warn(`[MongoHelper] No transactions found to determine latest block.`);
+             return null;
+        }
+    } catch (error) {
+        console.error(`[MongoHelper] Error finding latest block number:`, error);
+        return null;
+    }
+}
+
+// --- NEW: Placeholder for Most Active Aggregation ---
+/**
+ * Finds most active addresses based on transaction count within a filter.
+ * Placeholder - Requires complex aggregation implementation.
+ * @param {object} filter - MongoDB filter object (e.g., for time range).
+ * @param {number} limit - How many top active addresses to return.
+ * @returns {Promise<Array<object>>} - Array like [{ address: "...", count: N }, ...]
+ */
+async function getMostActiveAddresses(filter = {}, limit = 10) {
+    console.warn("[MongoHelper] getMostActiveAddresses function is not fully implemented.");
+    // --- Aggregation Logic Placeholder ---
+    // 1. $match: filter
+    // 2. $project: { addresses: { $concatArrays: ["$from", "$to"] } } // Combine from/to
+    // 3. $unwind: "$addresses" // Deconstruct the arrays
+    // 4. $group: { _id: "$addresses", count: { $sum: 1 } } // Count occurrences
+    // 5. $sort: { count: -1 } // Sort by count descending
+    // 6. $limit: limit // Get top N
+    // 7. $project: { _id: 0, address: "$_id", count: 1 } // Reshape output
+    // Example: const pipeline = [ { $match: filter }, ... ]; const results = await collection.aggregate(pipeline).toArray(); return results;
+    // --- End Placeholder ---
+    return Promise.resolve([]); // Return empty array for now
+}
+
+
+module.exports = { getMongoClient, queryCollection, closeDatabaseConnection, getLabelsForAddresses, getWhaleSummaryAndTopTransactions, getLatestBlockNumber, getMostActiveAddresses, WHALE_TRANSFERS_COLLECTION: process.env.COLLECTION_NAME, WALLET_LABEL_COLLECTION: WALLET_LABEL_COLLECTION };

@@ -99,20 +99,27 @@ async function handleHelpCommand(message) {
         .addFields(
             // Updated Whale Watcher Section
             {
-                name: `🐳 Whale Watcher (\`${whalePrefix}\`) - PAID Tier`, // Still assume Paid?
-                value: `Provides AI summary & analysis of large BTC transactions (>1 BTC) based on your filter (time, block, address, value). Enriches data with known wallet labels & calculates overall stats.\n`+
-                       `Returns AI analysis based on **overall summary** + **Top ${TOP_N_WHALES_FOR_AI} transactions by value**. Full details for Top ${TOP_N_WHALES_FOR_AI} attached as CSV.\n` +
+                 name: `🐳 Whale Watcher (\`${whalePrefix}\`) - PAID Tier`,
+                value: `AI summary & analysis of large BTC transactions (>1 BTC).\n`+
+                       `Provides overall summary + Top ${TOP_N_WHALES_FOR_AI} txs by value (details attached as CSV).\n`+
                        `*Requires Paid Membership.*\n` +
-                       `**Examples:**\n` +
-                       `\`${whalePrefix} latest\`\n` +
+                       `**Supported Queries:**\n` +
+                       `\`${whalePrefix} latest\` (dataset: 24 hours)\n` + // Clarified behavior
                        `\`${whalePrefix} last hour\`\n` +
-                       `\`${whalePrefix} last 7 days\`\n` +
-                       `\`${whalePrefix} last month\`\n` +
-                       `\`${whalePrefix} in block 1234567\`\n` +
+                       `\`${whalePrefix} last X hour\` (X: 1-24)\n` +
+                       `\`${whalePrefix} last X day\` (X: 1-7)\n` + // Changed from days to day
+                       `\`${whalePrefix} today\` / \`yesterday\`\n` +
+                       // `\`${whalePrefix} last week\` / \`last month\` (Note: month disabled for performance)\n` + // Removed month, clarify week=7d
+                       `\`${whalePrefix} last week\` (Same as last 7 day)\n` +
+                       `\`${whalePrefix} block <number>\` (or \`block no. <number>\`)\n` +
                        `\`${whalePrefix} latest block\`\n`+
-                       `\`${whalePrefix} address <address>\`\n` +
-                       `\`${whalePrefix} value > 50000000000\`\n` +
-                       `\`${whalePrefix} hash <tx_hash>\``
+                       `\`${whalePrefix} block <num1> to <num2>\`\n` +
+                       `\`${whalePrefix} hash <tx_hash>\`\n` +
+                       `\`${whalePrefix} address <address>\` (Defaults to recent activity)\n` +
+                       `\`${whalePrefix} address <address> latest\` (In latest block)\n` +
+                       `\`${whalePrefix} address <address> last X hour/day\` (e.g., last 24 hour, last 7 day)\n` +
+                       `\`${whalePrefix} value > 10000000000\` (Value in satoshis)`
+                       // `\`${whalePrefix} most active last hour\` *(Coming soon)*` 
             },
             // Updated CoinMarketCap Section (DEX Removed, more examples)
             {

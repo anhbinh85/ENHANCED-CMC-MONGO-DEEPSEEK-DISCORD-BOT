@@ -35,3 +35,4 @@ async function getAIResponse(prompt) { /* ... same non-streaming logic as before
 };
 module.exports = getAIResponse;
 module.exports.getAIStream = getAIStream;
+
