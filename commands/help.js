@@ -1,85 +1,3 @@
-// // commands/help.js
-// const { EmbedBuilder } = require('discord.js');
-
-// // Command prefixes (Ensure these match main.js if not using a central config)
-// const whalePrefix = "!whale";
-// const cmcPrefix = "!cmc";
-// const analyzePrefix = "!analyze";
-// const helpPrefix = "!help";
-
-// async function handleHelpCommand(message) {
-//     const helpEmbed = new EmbedBuilder()
-//         .setColor(0x0099FF)
-//         .setTitle('📈 Crypto Analysis Bot Help 📉')
-//         .setDescription(`Hello! I can help you analyze whale transactions and crypto market data. Ask questions naturally using the command prefixes below.
-// *AI Features depend on backend services (DeepSeek/OpenAI) being available.*`)
-//         .addFields(
-//             // Updated Whale Watcher Section
-//             {
-//                 name: `🐳 Whale Watcher (\`${whalePrefix}\`)`,
-//                 value: `Analyzes large BTC transactions (>1 BTC) from database, returning Top 10 by value for your query.\n` +
-//                        `**Examples:**\n` +
-//                        `\`${whalePrefix} latest transfers\`\n` +
-//                        `\`${whalePrefix} last hour\`\n` +
-//                        `\`${whalePrefix} in block 1234567\`\n` +
-//                        `\`${whalePrefix} address activity <address>\`\n` +
-//                        `\`${whalePrefix} transfers today with value > 10000000000\`\n` + // Note: value is satoshis
-//                        `\`${whalePrefix} find hash <tx_hash>\``
-//             },
-//             // Updated CoinMarketCap Section
-//             {
-//                 name: `📊 Market Analysis (\`${cmcPrefix}\`)`,
-//                 value: `Uses AI (DeepSeek) to understand your query, fetch data from CoinMarketCap, and provide analysis.\n` +
-//                        `*(Note: Access to trending, historical data, DEX info, or charting **requires a PAID CMC API plan** by the bot admin. Calls may fail otherwise.)*\n` +
-//                        `**Ask naturally! Examples:**\n` +
-//                        `\`${cmcPrefix} what is Solana?\` (General Knowledge)\n` +
-//                        `\`${cmcPrefix} price of BTC and ETH right now?\`\n` +
-//                        `\`${cmcPrefix} global market status\`\n` +
-//                        `\`${cmcPrefix} market trend analysis\` *(Paid CMC Plan Likely Needed)*\n` +
-//                        `\`${cmcPrefix} top gainers 7d\` *(Paid CMC Plan Likely Needed)*\n` +
-//                        `\`${cmcPrefix} info for Cardano\` (Website, description, etc.)\n`+
-//                        `\`${cmcPrefix} list categories\`\n`+
-//                        `\`${cmcPrefix} upcoming airdrops\`\n`+
-//                        `\`${cmcPrefix} dex networks\`\n`+
-//                        `\`${cmcPrefix} chart BTC 30d\` *(Paid CMC Plan Required)*\n`+
-//                        `*(Disclaimer: Market analysis is AI-generated and NOT financial advice.)*`
-//             },
-//             // New Image Analysis Section
-//             {
-//                 name: `🖼️ Chart Image Analysis (\`${analyzePrefix}\`)`,
-//                 value: `Analyzes an attached cryptocurrency chart image using AI (OpenAI Vision).\n` +
-//                        `**Usage:** Attach an image directly to your message.\n` +
-//                        `**Examples:**\n` +
-//                        `\`${analyzePrefix} identify patterns in this chart\` (+ attach image)\n` +
-//                        `\`${analyzePrefix} find support and resistance\` (+ attach image)\n` +
-//                        `\`${analyzePrefix}\` (+ attach image) *(uses default analysis prompt)*\n` +
-//                        `*(Note: Requires bot admin to have configured OpenAI Vision access.)*`
-//             },
-//             // Standard Help Section
-//             {
-//                 name: `❓ Help (\`${helpPrefix}\`)`,
-//                 value: `Shows this help message.`
-//             }
-//         )
-//         .setTimestamp()
-//         .setFooter({ text: 'Replace placeholders like <tx_hash> or <address> with actual values.' });
-
-//     try {
-//         // Use reply to ping the user who asked for help
-//         await message.reply({ embeds: [helpEmbed] });
-//     } catch (error) {
-//         console.error("Error sending help message:", error);
-//         // Fallback if embed fails
-//         try {
-//             await message.reply("Sorry, couldn't display the full help embed. Use `!whale <query>`, `!cmc <query>`, or `!analyze` + image attachment.");
-//         } catch (fallbackError) {
-//              console.error("Failed to send fallback help message:", fallbackError);
-//         }
-//     }
-// }
-
-// module.exports = { handleHelpCommand };
-
 // commands/help.js
 const { EmbedBuilder } = require('discord.js');
 const TOP_N_WHALES_FOR_AI = parseInt(process.env.TOP_N_WHALES_FOR_AI || "20"); // Get limit for help text
@@ -174,4 +92,6 @@ async function handleHelpCommand(message) {
 }
 
 module.exports = { handleHelpCommand };
+
+
 
