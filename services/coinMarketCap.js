@@ -314,7 +314,7 @@ async function getOhlcvHistorical(params = {}) { if (!params.id && !params.symbo
 async function getPricePerformanceStats(params = {}) { if (!params.id && !params.symbol && !params.slug) { throw new Error("Requires 'id', 'symbol', or 'slug'."); } console.warn("CMC: getPricePerformanceStats likely requires PAID PLAN."); return await makeCmcRequest('/cryptocurrency/price-performance-stats/latest', params, 'v2'); } // Check Plan
 async function getCategories(params = { limit: 100, start: 1 }) { return await makeCmcRequest('/cryptocurrency/categories', params, 'v1'); }
 async function getCategory(id) { if (!id) throw new Error("Requires 'id' parameter."); return await makeCmcRequest('/cryptocurrency/category', { id }, 'v1'); } // Pass ID in params obj
-async function getAirdrops(params = { limit: 100, start: 1, status: 'ongoing' }) { return await makeCmcRequest('/cryptocurrency/airdrops', params, 'v1'); }
+async function getAirdrops(params = { limit: 100, start: 1, status: 'UPCOMING' }) { return await makeCmcRequest('/cryptocurrency/airdrops', params, 'v1'); }
 async function getAirdrop(id) { if (!id) throw new Error("Requires 'id' parameter."); return await makeCmcRequest('/cryptocurrency/airdrop', { id }, 'v1'); } // Pass ID in params obj
 async function getTrendingLatest(params = {}) { console.warn("CMC: getTrendingLatest likely requires PAID PLAN."); return await makeCmcRequest('/cryptocurrency/trending/latest', params, 'v1'); } // Paid likely
 async function getTrendingMostVisited(params = {}) { console.warn("CMC: getTrendingMostVisited likely requires PAID PLAN."); return await makeCmcRequest('/cryptocurrency/trending/most-visited', params, 'v1'); } // Paid likely

@@ -1,6 +1,6 @@
 // services/chartGenerator.js
 const { ChartJSNodeCanvas } = require('chartjs-node-canvas');
-const fs = require('fs'); // Only needed if saving file, not for buffer
+// const fs = require('fs'); // Removed - Not needed for buffer generation
 
 // Configuration for the chart image
 const width = 800; // px
@@ -28,14 +28,18 @@ async function generatePriceVolumeChart(symbol, ohlcvData) {
         const labels = ohlcvData.map(d => new Date(d.time_close || d.timestamp || d.time_open).toLocaleDateString()); // Use appropriate time field
         // Access nested price/volume based on CMC response structure (adjust if needed!)
         const priceData = ohlcvData.map(d => d.quote?.USD?.price || d.quote?.USD?.close || d.price || d.close); // Handle variations
-        const volumeData = ohlcvData.map(d => d.quote?.USD?.volume || d.volume);
+        // const volumeData = ohlcvData.map(d => d.quote?.USD?.volume || d.volume); // Keep if planning to uncomment volume chart
 
-        // Ensure we actually extracted data
-        if (priceData.some(p => p === undefined) || volumeData.some(v => v === undefined)) {
-             console.warn(`[ChartGenerator] Could not extract price/volume data correctly for ${symbol}. Check CMC response structure.`);
-             // Example data point for debugging: console.log(ohlcvData[0]);
-             // return null; // Or try to chart just price if volume missing?
+        // --- Improved Check: Ensure we extracted *some* valid price data ---
+        const validPriceData = priceData.filter(p => typeof p === 'number' && !isNaN(p));
+        if (validPriceData.length === 0) {
+            console.warn(`[ChartGenerator] Could not extract any valid price data points for ${symbol}. Check input data structure. First item:`, ohlcvData[0]);
+            return null; // Cannot generate chart without price data
         }
+        // Optional: Check if *some* data failed extraction (already handled by original warning)
+        // if (priceData.some(p => p === undefined)) {
+        //      console.warn(`[ChartGenerator] Some price data points were undefined for ${symbol}.`);
+        // }
 
 
         const configuration = {
@@ -45,7 +49,7 @@ async function generatePriceVolumeChart(symbol, ohlcvData) {
                 datasets: [
                     {
                         label: `${symbol} Price (USD)`,
-                        data: priceData,
+                        data: priceData, // Use original priceData which might have nulls for gaps if needed, Chart.js can handle some gaps
                         borderColor: 'rgb(75, 192, 192)',
                         tension: 0.1,
                         yAxisID: 'yPrice', // Link to price axis

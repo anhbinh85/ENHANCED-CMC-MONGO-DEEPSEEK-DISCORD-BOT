@@ -73,7 +73,7 @@ Available CoinMarketCap Service Functions (Only plan calls for "CMC_DATA_NEEDED"
 - getListingsLatest(params: {limit?: number, sort?: string}): Fetches top cryptos by market cap (Free plan limited). For "top coins", "latest listings".
 - getCategories(params: {limit?: number}): Fetches list of all categories. For "list categories".
 - getCategory(id: string): Fetches details for a specific category ID/slug. For "details on category X".
-- getAirdrops(params: {limit?: number, status?: string, symbol?: string, id?: string}): Fetches list of airdrops. For "airdrops", "upcoming airdrops".
+- getAirdrops(params: {limit?: number, status?: string, symbol?: string, id?: string}): Fetches list of airdrops. Valid statuses: 'ONGOING', 'UPCOMING', 'ENDED'. Use 'ONGOING' if user asks for 'active' or 'current' airdrops. For "airdrops", "upcoming airdrops".
 - getAirdrop(id: string): Fetches details for a specific airdrop ID.
 --- Paid Plan Required Crypto Endpoints ---
 - getTrendingLatest(): Fetches trending coins. REQUIRES PAID PLAN.
@@ -105,7 +105,7 @@ Task:
     d. Determine 'needs_analysis': Set \`true\` for interpretation, summarization, comparison, trends, or specific value extraction (like price). Set \`false\` *only* for raw lists (like 'list categories', 'list dex networks'). Price/Quote requests need analysis (\`true\`).
     e. Determine 'chart_request': {"symbol": "SYMBOL", "data_source_key": "key"} if historical data needed (paid plan!), else null.
     f. Output JSON: {"query_type": "CMC_DATA_NEEDED", "calls": [...], "needs_analysis": boolean, "chart_request": object|null }.
-
+4. If please give the answer in the language of the user input, respond in that language example if user input Vietnamese your response must be in Vietnamese don't use English.
 Output Format: Respond ONLY with a single, valid JSON object. Check function names/params carefully.
 
 --- Start Examples ---
