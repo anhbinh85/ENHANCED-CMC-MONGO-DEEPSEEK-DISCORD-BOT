@@ -21,19 +21,21 @@
 //     // --- Define Regex patterns for specific commands ---
 //     // Order matters - more specific patterns first
 //     const patterns = [
-//         { name: 'TX_HASH', regex: /^(?:txhash|hash)\s+([a-fA-F0-9]{64})$/i },
+//         { name: 'TX_HASH', regex: /^(?:txhash|hash)\s+([a-fA-F0-9]{64})$/i }, // Handles txhash or hash prefix
 //         { name: 'ADDRESS_LATEST', regex: /^address\s+((?:bc1|[13])[a-zA-HJ-NP-Z0-9]{25,60})\s+latest$/i },
 //         { name: 'ADDRESS_TIME_RANGE', regex: /^address\s+((?:bc1|[13])[a-zA-HJ-NP-Z0-9]{25,60})\s+last\s+(\d+)\s+(hour|day)s?$/i },
-//         { name: 'ADDRESS_TIME_WORD', regex: /^address\s+((?:bc1|[13])[a-zA-HJ-NP-Z0-9]{25,60})\s+(today|yesterday|last\s+week|last\s+7\s+days)$/i }, // Added last week/7 days
+//         { name: 'ADDRESS_TIME_WORD', regex: /^address\s+((?:bc1|[13])[a-zA-HJ-NP-Z0-9]{25,60})\s+(today|yesterday|last\s+week|last\s+7\s+days)$/i },
 //         { name: 'ADDRESS_ONLY', regex: /^address\s+((?:bc1|[13])[a-zA-HJ-NP-Z0-9]{25,60})$/i },
 //         { name: 'BLOCK_RANGE', regex: /^(?:block|blocks)\s+(\d+)\s*(?:to|-)\s*(\d+)$/i },
 //         { name: 'BLOCK_SINGLE', regex: /^(?:block\sno\.?|block\snumber|in\sblock|block)\s+(\d+)$/i },
 //         { name: 'LATEST_BLOCK_DIRECT', regex: /^latest\s+block$/i },
 //         { name: 'LATEST_ALIAS', regex: /^(latest|latest\s+transfers)$/i },
-//         { name: 'MOST_ACTIVE', regex: /^most\s+active\s+last\s+hour$/i },
-//         { name: 'TIME_RANGE', regex: /^last\s+(\d+)\s+(hour|day)s?$/i }, // Specific hour/day range
-//         { name: 'TIME_WORD', regex: /^(last\s+hour|past\s+hour|today|yesterday|last\s+week|last\s+7\s+days)$/i } // Specific word ranges
-//         // Note: Value filter removed as standalone, could be added back or combined if needed
+//         // --- Added MOST_ACTIVE_TIME_RANGE with higher priority ---
+//         { name: 'MOST_ACTIVE_TIME_RANGE', regex: /^most\s+active\s+last\s+(\d+)\s+hours?$/i },
+//         { name: 'MOST_ACTIVE', regex: /^most\s+active\s+last\s+hour$/i }, // Keep specific one as fallback? Or remove if redundant
+//         // --- End Addition ---
+//         { name: 'TIME_RANGE', regex: /^last\s+(\d+)\s+(hour|day)s?$/i },
+//         { name: 'TIME_WORD', regex: /^(last\s+hour|past\s+hour|today|yesterday|last\s+week|last\s+7\s+days)$/i }
 //     ];
 
 //     let matchFound = false;
@@ -88,9 +90,9 @@
 //                         filterDescription = `address ${addr.substring(0, 6)}... (${timeDescAddr})`;
 //                         break;
 
-//                     case 'ADDRESS_ONLY': // Apply default time range (e.g., last 3 days)
+//                     case 'ADDRESS_ONLY':
 //                         addr = match[1];
-//                         startS = Math.floor((now.getTime() - 3 * 86400000) / 1000); // 3 days
+//                         startS = Math.floor((now.getTime() - 3 * 86400000) / 1000); // Default 3 days
 //                         mongoFilter = { $and: [ { $or: [{ from: addr }, { to: addr }] }, { _id: { $gte: ObjectId.createFromTime(startS) } } ] };
 //                         filterDescription = `address ${addr.substring(0, 6)}... (default: last 3 days)`;
 //                         break;
@@ -99,7 +101,6 @@
 //                         blockStart = parseInt(match[1], 10);
 //                         blockEnd = parseInt(match[2], 10);
 //                         if (isNaN(blockStart) || isNaN(blockEnd) || blockEnd < blockStart) throw new Error("Invalid block range.");
-//                         // Note: 7-day gap check omitted due to complexity
 //                         mongoFilter = { block: { $gte: blockStart, $lte: blockEnd } };
 //                         filterDescription = `block range ${blockStart}-${blockEnd} (Note: 7-day gap check not applied)`;
 //                         break;
@@ -117,12 +118,27 @@
 //                         filterDescription = "latest block"; // Handler will refine this
 //                         break;
 
-//                     case 'MOST_ACTIVE':
+//                     // --- Handle new "most active X hours" ---
+//                     case 'MOST_ACTIVE_TIME_RANGE':
+//                         num = parseInt(match[1], 10);
+//                         unit = 'hour';
+//                         if (num >= 1 && num <= 24) {
+//                             requiresMostActiveCheck = true;
+//                             filterDescription = `most active last ${num} hour${num > 1 ? 's' : ''}`;
+//                             startS = Math.floor((now.getTime() - num * 3600000) / 1000);
+//                             mongoFilter = { _id: { $gte: ObjectId.createFromTime(startS) } };
+//                         } else {
+//                             throw new Error(`Invalid range for 'most active': hours must be between 1 and 24.`);
+//                         }
+//                         break;
+
+//                     case 'MOST_ACTIVE': // Handles specific "most active last hour"
 //                         requiresMostActiveCheck = true;
 //                         filterDescription = "most active last hour";
 //                         startS = Math.floor((now.getTime() - 60 * 60 * 1000) / 1000); // 1 hour
-//                         mongoFilter = { _id: { $gte: ObjectId.createFromTime(startS) } }; // Time filter for the helper
+//                         mongoFilter = { _id: { $gte: ObjectId.createFromTime(startS) } };
 //                         break;
+//                     // --- End handle ---
 
 //                     case 'TIME_RANGE':
 //                         num = parseInt(match[1], 10);
@@ -139,17 +155,21 @@
 //                         break;
 
 //                      case 'TIME_WORD':
-//                         const timeWord = match[1];
+//                         const timeWord = match[1]; // Use match[1] as group(0) is the full match
 //                         if (timeWord === 'last hour' || timeWord === 'past hour') { startS = Math.floor((now.getTime() - 60*60*1000)/1000); filterDescription="last hour"; }
 //                         else if (timeWord === 'today') { const s=new Date(now); s.setHours(0,0,0,0); startS=Math.floor(s.getTime()/1000); filterDescription = "today"; }
 //                         else if (timeWord === 'yesterday') { const s=new Date(now); s.setDate(now.getDate()-1); s.setHours(0,0,0,0); startS=Math.floor(s.getTime()/1000); const e=new Date(s); e.setHours(23,59,59,999); endS=Math.floor(e.getTime()/1000); }
 //                         else if (timeWord === 'last week' || timeWord === 'last 7 days') { startS=Math.floor((now.getTime()-7*24*60*60*1000)/1000); filterDescription="last 7 days"; }
-//                         else { throw new Error(`Unhandled time word: ${timeWord}`);} // Should not happen if regex matches
+//                         else { throw new Error(`Unhandled time word: ${timeWord}`);}
 
-//                         if(startSeconds!==undefined){
-//                             const sO=ObjectId.createFromTime(startSeconds);
-//                             if(endSeconds!==null){ const eO=ObjectId.createFromTime(endSeconds); mongoFilter={_id:{$gte:sO,$lte:eO}}; }
-//                             else { mongoFilter={_id:{$gte:sO}}; }
+//                         if(startS !== undefined){ // Corrected variable name
+//                             const sO=ObjectId.createFromTime(startS);
+//                             if(endS !== undefined && endS !== null){ // Corrected variable name
+//                                 const eO=ObjectId.createFromTime(endS);
+//                                 mongoFilter={_id:{$gte:sO,$lte:eO}};
+//                             } else {
+//                                 mongoFilter={_id:{$gte:sO}};
+//                             }
 //                         } else { throw new Error(`Could not calculate start time for ${timeWord}`); }
 //                         break;
 //                 }
@@ -159,7 +179,12 @@
 
 //         // If no specific pattern matched
 //         if (!matchFound) {
-//             parseError = "Unknown command format. Use `!help` for examples.";
+//             // Apply a default filter if absolutely nothing matched
+//              const defaultStartS = Math.floor((now.getTime() - 24 * 3600000) / 1000); // Default to last 24 hours if query is invalid
+//              mongoFilter = { _id: { $gte: ObjectId.createFromTime(defaultStartS) } };
+//              filterDescription = "latest activity (default: last 24h - unknown query)";
+//              console.warn(`[FilterParser] Unknown command format: "${userQuery}". Defaulting to last 24 hours.`);
+//             // parseError = "Unknown command format. Use `!help` for examples."; // Alternatively, force error
 //         }
 
 //     } catch (error) {
@@ -184,13 +209,15 @@ const { ObjectId } = require('mongodb'); // Needs mongodb ObjectId
 /**
  * Parses the !whale command query string precisely based on defined formats.
  * @param {string} userQuery - The query text after "!whale ".
- * @returns {{mongoFilter: object, filterDescription: string, requiresLatestBlockLookup: boolean, requiresMostActiveCheck: boolean, sortOverride: object|null, limitOverride: number|null, parseError: string|null}}
+ * @returns {{mongoFilter: object, filterDescription: string, requiresLatestBlockLookup: boolean, requiresMostActiveCheck: boolean, requiresRelationCheck: boolean, targetAddress: string|null, sortOverride: object|null, limitOverride: number|null, parseError: string|null}}
  */
 function parseWhaleQuery(userQuery) {
     let mongoFilter = {};
     let filterDescription = "";
     let requiresLatestBlockLookup = false;
     let requiresMostActiveCheck = false;
+    let requiresRelationCheck = false; // <-- New Flag
+    let targetAddress = null;         // <-- Store target address
     let sortOverride = null;
     let limitOverride = null;
     let parseError = null;
@@ -198,10 +225,12 @@ function parseWhaleQuery(userQuery) {
     const lowerCaseQuery = userQuery.toLowerCase().trim();
     const now = new Date();
 
-    // --- Define Regex patterns for specific commands ---
-    // Order matters - more specific patterns first
+    // Define Regex patterns (Order matters - more specific patterns first)
     const patterns = [
-        { name: 'TX_HASH', regex: /^(?:txhash|hash)\s+([a-fA-F0-9]{64})$/i }, // Handles txhash or hash prefix
+        // --- Add Relation Check Pattern (High Priority) ---
+        { name: 'RELATION_CHECK', regex: /^cluster\s+((?:bc1|[13])[a-zA-HJ-NP-Z0-9]{25,60})\s+last\s+(\d+)\s+hours?$/i },
+        // --- End Addition ---
+        { name: 'TX_HASH', regex: /^(?:txhash|hash)\s+([a-fA-F0-9]{64})$/i },
         { name: 'ADDRESS_LATEST', regex: /^address\s+((?:bc1|[13])[a-zA-HJ-NP-Z0-9]{25,60})\s+latest$/i },
         { name: 'ADDRESS_TIME_RANGE', regex: /^address\s+((?:bc1|[13])[a-zA-HJ-NP-Z0-9]{25,60})\s+last\s+(\d+)\s+(hour|day)s?$/i },
         { name: 'ADDRESS_TIME_WORD', regex: /^address\s+((?:bc1|[13])[a-zA-HJ-NP-Z0-9]{25,60})\s+(today|yesterday|last\s+week|last\s+7\s+days)$/i },
@@ -210,10 +239,8 @@ function parseWhaleQuery(userQuery) {
         { name: 'BLOCK_SINGLE', regex: /^(?:block\sno\.?|block\snumber|in\sblock|block)\s+(\d+)$/i },
         { name: 'LATEST_BLOCK_DIRECT', regex: /^latest\s+block$/i },
         { name: 'LATEST_ALIAS', regex: /^(latest|latest\s+transfers)$/i },
-        // --- Added MOST_ACTIVE_TIME_RANGE with higher priority ---
         { name: 'MOST_ACTIVE_TIME_RANGE', regex: /^most\s+active\s+last\s+(\d+)\s+hours?$/i },
-        { name: 'MOST_ACTIVE', regex: /^most\s+active\s+last\s+hour$/i }, // Keep specific one as fallback? Or remove if redundant
-        // --- End Addition ---
+        { name: 'MOST_ACTIVE', regex: /^most\s+active\s+last\s+hour$/i },
         { name: 'TIME_RANGE', regex: /^last\s+(\d+)\s+(hour|day)s?$/i },
         { name: 'TIME_WORD', regex: /^(last\s+hour|past\s+hour|today|yesterday|last\s+week|last\s+7\s+days)$/i }
     ];
@@ -229,6 +256,22 @@ function parseWhaleQuery(userQuery) {
                 let addr, num, unit, startS, endS, blockStart, blockEnd; // Declare vars locally
 
                 switch (p.name) {
+                    // --- Add Case for RELATION_CHECK ---
+                    case 'RELATION_CHECK':
+                        targetAddress = match[1]; // Capture the address
+                        num = parseInt(match[2], 10); // Capture hours
+                        unit = 'hour';
+                        if (num >= 1 && num <= 24) {
+                            requiresRelationCheck = true; // Set the flag
+                            filterDescription = `relations for ${targetAddress.substring(0,6)}... last ${num} hour${num > 1 ? 's' : ''}`;
+                            startS = Math.floor((now.getTime() - num * 3600000) / 1000);
+                            mongoFilter = { _id: { $gte: ObjectId.createFromTime(startS) } }; // Time filter only
+                        } else {
+                            throw new Error(`Invalid range for 'cluster': hours must be between 1 and 24.`);
+                        }
+                        break;
+                    // --- End Addition ---
+
                     case 'TX_HASH':
                         mongoFilter = { txHash: match[1] };
                         filterDescription = `transaction ${match[1].substring(0, 8)}...`;
@@ -295,10 +338,9 @@ function parseWhaleQuery(userQuery) {
                     case 'LATEST_BLOCK_DIRECT':
                     case 'LATEST_ALIAS':
                         requiresLatestBlockLookup = true;
-                        filterDescription = "latest block"; // Handler will refine this
+                        filterDescription = "latest block";
                         break;
 
-                    // --- Handle new "most active X hours" ---
                     case 'MOST_ACTIVE_TIME_RANGE':
                         num = parseInt(match[1], 10);
                         unit = 'hour';
@@ -312,13 +354,12 @@ function parseWhaleQuery(userQuery) {
                         }
                         break;
 
-                    case 'MOST_ACTIVE': // Handles specific "most active last hour"
+                    case 'MOST_ACTIVE':
                         requiresMostActiveCheck = true;
                         filterDescription = "most active last hour";
-                        startS = Math.floor((now.getTime() - 60 * 60 * 1000) / 1000); // 1 hour
+                        startS = Math.floor((now.getTime() - 60 * 60 * 1000) / 1000);
                         mongoFilter = { _id: { $gte: ObjectId.createFromTime(startS) } };
                         break;
-                    // --- End handle ---
 
                     case 'TIME_RANGE':
                         num = parseInt(match[1], 10);
@@ -335,21 +376,17 @@ function parseWhaleQuery(userQuery) {
                         break;
 
                      case 'TIME_WORD':
-                        const timeWord = match[1]; // Use match[1] as group(0) is the full match
+                        const timeWord = match[0]; // Use full match for word check
                         if (timeWord === 'last hour' || timeWord === 'past hour') { startS = Math.floor((now.getTime() - 60*60*1000)/1000); filterDescription="last hour"; }
                         else if (timeWord === 'today') { const s=new Date(now); s.setHours(0,0,0,0); startS=Math.floor(s.getTime()/1000); filterDescription = "today"; }
                         else if (timeWord === 'yesterday') { const s=new Date(now); s.setDate(now.getDate()-1); s.setHours(0,0,0,0); startS=Math.floor(s.getTime()/1000); const e=new Date(s); e.setHours(23,59,59,999); endS=Math.floor(e.getTime()/1000); }
                         else if (timeWord === 'last week' || timeWord === 'last 7 days') { startS=Math.floor((now.getTime()-7*24*60*60*1000)/1000); filterDescription="last 7 days"; }
                         else { throw new Error(`Unhandled time word: ${timeWord}`);}
 
-                        if(startS !== undefined){ // Corrected variable name
+                        if(startS !== undefined){
                             const sO=ObjectId.createFromTime(startS);
-                            if(endS !== undefined && endS !== null){ // Corrected variable name
-                                const eO=ObjectId.createFromTime(endS);
-                                mongoFilter={_id:{$gte:sO,$lte:eO}};
-                            } else {
-                                mongoFilter={_id:{$gte:sO}};
-                            }
+                            if(endS !== undefined && endS !== null){ const eO=ObjectId.createFromTime(endS); mongoFilter={_id:{$gte:sO,$lte:eO}}; }
+                            else { mongoFilter={_id:{$gte:sO}}; }
                         } else { throw new Error(`Could not calculate start time for ${timeWord}`); }
                         break;
                 }
@@ -359,12 +396,10 @@ function parseWhaleQuery(userQuery) {
 
         // If no specific pattern matched
         if (!matchFound) {
-            // Apply a default filter if absolutely nothing matched
-             const defaultStartS = Math.floor((now.getTime() - 24 * 3600000) / 1000); // Default to last 24 hours if query is invalid
+             const defaultStartS = Math.floor((now.getTime() - 24 * 3600000) / 1000);
              mongoFilter = { _id: { $gte: ObjectId.createFromTime(defaultStartS) } };
              filterDescription = "latest activity (default: last 24h - unknown query)";
              console.warn(`[FilterParser] Unknown command format: "${userQuery}". Defaulting to last 24 hours.`);
-            // parseError = "Unknown command format. Use `!help` for examples."; // Alternatively, force error
         }
 
     } catch (error) {
@@ -374,10 +409,11 @@ function parseWhaleQuery(userQuery) {
     // Final check and return
     if (parseError) {
         console.warn(`[FilterParser] Parse Error: ${parseError} | Query: "${userQuery}"`);
-        return { parseError }; // Return only error if parsing failed
+        return { parseError };
     } else {
-        console.log(`[FilterParser] Parsed Result: Desc='${filterDescription}', Filter='${JSON.stringify(mongoFilter)}', LatestBlockLookup=${requiresLatestBlockLookup}, MostActive=${requiresMostActiveCheck}`);
-        return { mongoFilter, filterDescription, sortOverride, limitOverride, requiresLatestBlockLookup, requiresMostActiveCheck, parseError: null };
+        console.log(`[FilterParser] Parsed Result: Desc='${filterDescription}', Filter='${JSON.stringify(mongoFilter)}', LatestLookup=${requiresLatestBlockLookup}, MostActive=${requiresMostActiveCheck}, RelationCheck=${requiresRelationCheck}, TargetAddr=${targetAddress}`);
+        // Add new flags/data to return object
+        return { mongoFilter, filterDescription, sortOverride, limitOverride, requiresLatestBlockLookup, requiresMostActiveCheck, requiresRelationCheck, targetAddress, parseError: null };
     }
 }
 
