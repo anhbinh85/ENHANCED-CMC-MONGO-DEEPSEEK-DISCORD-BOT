@@ -125,7 +125,7 @@ async function handleHelpCommand(message) {
                ` • \`${whalePrefix} last hour\`\n` +
                ` • \`${whalePrefix} last X hour\` (X = 1 to 24)\n` +
                ` • \`${whalePrefix} last X day\` (X = 1 to 7)\n` +
-               ` • \`${whalePrefix} today\` / \`yesterday\` / \`last week\` (7d)`
+               ` • \`${whalePrefix} today\` / \`yesterday\` / \`last week\` (7d)\n`
     });
 
     // Whale Watcher - Part 2 (Block, Tx, Address)
@@ -149,7 +149,8 @@ async function handleHelpCommand(message) {
          value: `**Special Commands:**\n`+
                 ` • \`${whalePrefix} cluster <addr> last X hours\` (X=1-24). Shows Top ${RELATION_DISPLAY_LIMIT} counterparties summary (IN/OUT BTC, Count, Types). Attaches CSV with all interactions + TxIDs.\n` +
                 ` • \`${whalePrefix} most active last hour\`\n` +
-                ` • \`${whalePrefix} most active last X hours\` (X=1-24). Lists Top ${MOST_ACTIVE_DISPLAY_LIMIT} addresses (Count, IN/OUT BTC, Labels). Attaches CSV with full list.\n*(Note: 'cluster' & 'most active' skip AI summary.)*`
+                ` • \`${whalePrefix} most active last X hours\` (X=1-24). Lists Top ${MOST_ACTIVE_DISPLAY_LIMIT} addresses (Count, IN/OUT BTC, Labels). Attaches CSV with full list.\n*(Note: 'cluster' & 'most active' skip AI summary.)*\n` +
+                ` • \`${whalePrefix} balance <address>\` (Gets BTC balance for an address)\n`
     });
 
     // CoinMarketCap Section
