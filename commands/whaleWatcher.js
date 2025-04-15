@@ -336,7 +336,8 @@ const { AttachmentBuilder } = require('discord.js');
 const mongoHelper = require('../services/mongoHelper');
 const aiHelper = require('../services/aiHelper');
 const blockcypherHelper = require('../services/blockcypherHelper'); // Used ONLY for balance & fee
-const binanceHelper = require('../services/binanceHelper'); // Use Binance for price
+// const binanceHelper = require('../services/binanceHelper'); // Use Binance for price
+// const coinMarketCapHelper = require('../services/coinMarketCap');
 const quicknodeHelper = require('../services/quicknodeHelper'); // <-- Used for TX analysis
 const transactionAnalyzer = require('../utils/transactionAnalyzer');
 const { parseWhaleQuery } = require('../utils/filterParser');
@@ -477,7 +478,50 @@ async function handleWhaleCommand(message, userQuery) {
         if (requiresFeeCheck || requiresBalanceCheck || requiresRelationCheck || requiresMostActiveCheck) {
             skipAI = true;
             // ... (Fee, Balance, Relation, Most Active logic remains unchanged) ...
-            if (requiresFeeCheck) { /* ... fee logic ... */ await thinkingMessage.edit(`⏳ Checking network fees...`); let btcPriceUSD = null; try { const priceData = await binanceHelper.getPrice(BTC_PRICE_SYMBOL); if (!priceData?.price) throw new Error(`[BNB] Could not retrieve BTC price`); btcPriceUSD = parseFloat(priceData.price); if (isNaN(btcPriceUSD)) throw new Error(`[BNB] Invalid price: ${priceData.price}`); const feeInfo = await blockcypherHelper.getBlockchainFeeInfo(); const { high_fee_per_kb, medium_fee_per_kb, low_fee_per_kb } = feeInfo; if (high_fee_per_kb === undefined || medium_fee_per_kb === undefined || low_fee_per_kb === undefined) throw new Error("[BCR] Fee info missing."); const calcFee = (satKB) => { const satVB = satKB / 1000; const totalSat = satVB * AVG_BTC_TX_SIZE_BYTES; const btc = totalSat / 1e8; const usd = btc * btcPriceUSD; return { satVb: satVB.toFixed(1), btc: btc.toFixed(8), usd: usd.toFixed(2) }; }; const h = calcFee(high_fee_per_kb), m = calcFee(medium_fee_per_kb), l = calcFee(low_fee_per_kb); fullResponseText = `**Bitcoin Network Fee Estimates:**\n • High: ${h.satVb} sat/vB (~${h.btc} BTC / $${h.usd})\n • Medium: ${m.satVb} sat/vB (~${m.btc} BTC / $${m.usd})\n • Low: ${l.satVb} sat/vB (~${l.btc} BTC / $${l.usd})\n\n*(BTC≈$${btcPriceUSD.toLocaleString()}, ~${AVG_BTC_TX_SIZE_BYTES} vB tx | Fees: Blockcypher)*`; } catch (e) { console.error("[WhaleWatcher] Fee Check Err:", e); fullResponseText = `Sorry, failed to get fee info: ${e.message}`; } fileBuffer = null; }
+            // if (requiresFeeCheck) { /* ... fee logic ... */ await thinkingMessage.edit(`⏳ Checking network fees...`); let btcPriceUSD = null; try { const priceData = await binanceHelper.getPrice(BTC_PRICE_SYMBOL); if (!priceData?.price) throw new Error(`[BNB] Could not retrieve BTC price`); btcPriceUSD = parseFloat(priceData.price); if (isNaN(btcPriceUSD)) throw new Error(`[BNB] Invalid price: ${priceData.price}`); const feeInfo = await blockcypherHelper.getBlockchainFeeInfo(); const { high_fee_per_kb, medium_fee_per_kb, low_fee_per_kb } = feeInfo; if (high_fee_per_kb === undefined || medium_fee_per_kb === undefined || low_fee_per_kb === undefined) throw new Error("[BCR] Fee info missing."); const calcFee = (satKB) => { const satVB = satKB / 1000; const totalSat = satVB * AVG_BTC_TX_SIZE_BYTES; const btc = totalSat / 1e8; const usd = btc * btcPriceUSD; return { satVb: satVB.toFixed(1), btc: btc.toFixed(8), usd: usd.toFixed(2) }; }; const h = calcFee(high_fee_per_kb), m = calcFee(medium_fee_per_kb), l = calcFee(low_fee_per_kb); fullResponseText = `**Bitcoin Network Fee Estimates:**\n • High: ${h.satVb} sat/vB (~${h.btc} BTC / $${h.usd})\n • Medium: ${m.satVb} sat/vB (~${m.btc} BTC / $${m.usd})\n • Low: ${l.satVb} sat/vB (~${l.btc} BTC / $${l.usd})\n\n*(BTC≈$${btcPriceUSD.toLocaleString()}, ~${AVG_BTC_TX_SIZE_BYTES} vB tx | Fees: Blockcypher)*`; } catch (e) { console.error("[WhaleWatcher] Fee Check Err:", e); fullResponseText = `Sorry, failed to get fee info: ${e.message}`; } fileBuffer = null; }
+            if (requiresFeeCheck) {
+                await thinkingMessage.edit(`⏳ Checking network fees via Blockcypher...`); // Updated message
+                try {
+                    const feeInfo = await blockcypherHelper.getBlockchainFeeInfo(); // [cite: 126]
+                    const { high_fee_per_kb, medium_fee_per_kb, low_fee_per_kb } = feeInfo; // [cite: 127]
+
+                    if (high_fee_per_kb === undefined || medium_fee_per_kb === undefined || low_fee_per_kb === undefined) {
+                        throw new Error("[BCR] Fee info missing from Blockcypher response."); // [cite: 127]
+                    }
+
+                    // Function to calculate sat/vB and estimated BTC cost
+                    const calculateBtcFee = (satKB) => {
+                        if (typeof satKB !== 'number' || isNaN(satKB)) {
+                             return { satVb: 'N/A', btc: 'N/A' }; // Handle invalid input
+                        }
+                        const satVB = satKB / 1000; // Calculate satoshis per vByte
+                        const totalSat = satVB * AVG_BTC_TX_SIZE_BYTES; // Estimate total satoshis for avg tx size [cite: 68, 128]
+                        const btc = totalSat / 1e8; // Convert total satoshis to BTC [cite: 129]
+                        return {
+                            satVb: satVB.toFixed(1), // Format sat/vB
+                            btc: btc.toFixed(8)     // Format BTC value
+                        };
+                    };
+
+                    const h = calculateBtcFee(high_fee_per_kb);
+                    const m = calculateBtcFee(medium_fee_per_kb);
+                    const l = calculateBtcFee(low_fee_per_kb);
+
+                    // Updated response text (BTC only)
+                    fullResponseText = `**Bitcoin Network Fee Estimates:**\n` +
+                                       ` • High:   **${h.satVb} sat/vB** (~${h.btc} BTC)\n` +
+                                       ` • Medium: **${m.satVb} sat/vB** (~${m.btc} BTC)\n` +
+                                       ` • Low:    **${l.satVb} sat/vB** (~${l.btc} BTC)\n\n` +
+                                       `*(Estimates based on ~${AVG_BTC_TX_SIZE_BYTES} vB average transaction size | Data: Blockcypher)*`; // [cite: 68, 130]
+
+                } catch (e) {
+                    console.error("[WhaleWatcher] Fee Check Err:", e);
+                    // Keep error reporting simple as no external price API is involved now
+                    const errorMessage = e.message.includes('[BCR]') ? e.message : `[System] ${e.message}`;
+                    fullResponseText = `Sorry, failed to get fee info: ${errorMessage}`; // [cite: 131]
+                }
+                fileBuffer = null; // [cite: 132]
+            }
             else if (requiresBalanceCheck) { /* ... balance logic ... */ if (!targetAddress) throw new Error("Target address missing"); await thinkingMessage.edit(`⏳ Checking balance via Blockcypher...`); try { const balInfo = await blockcypherHelper.getAddressBalance(targetAddress); const f = (balInfo.final_balance / 1e8).toLocaleString(undefined,{minimumFractionDigits:8,maximumFractionDigits:8}); const c = (balInfo.balance / 1e8).toLocaleString(undefined,{minimumFractionDigits:8,maximumFractionDigits:8}); const u = (balInfo.unconfirmed_balance / 1e8).toLocaleString(undefined,{minimumFractionDigits:8,maximumFractionDigits:8}); fullResponseText = `**Balance for \`${balInfo.address}\`:**\n • Confirmed: **${c} BTC**\n • Unconfirmed: ${u} BTC\n • Total: **${f} BTC**\n • Txns: ${balInfo.final_n_tx}\n*(Data: Blockcypher)*`; } catch (e) { console.error("[WhaleWatcher] Balance Check Err:", e); fullResponseText = `Sorry, failed to get balance: ${e.message}`; } fileBuffer = null; }
             else if (requiresRelationCheck) { /* ... relation logic ... */ if (!targetAddress) throw new Error("Target address missing"); await thinkingMessage.edit(`⏳ Analyzing relations for ${targetAddress.substring(0,6)}...`); if (typeof mongoHelper.findAddressRelations !== 'function') throw new Error("[System] Relation query fn missing."); const allInteractions = await mongoHelper.findAddressRelations(targetAddress, mongoFilter); if (!allInteractions?.length) { fullResponseText = `No interactions found for \`${targetAddress}\` (${filterDescription}).`; fileBuffer = null; } else { const counterparties = [...new Set(allInteractions.map(i => i.counterparty))]; const labels = await mongoHelper.getLabelsForAddresses(counterparties); fileName = `relations_${targetAddress.substring(0,10)}_${filterDescription.replace(/[^a-z0-9]/gi,'_')}.csv`; fileBuffer = generateDataFile(allInteractions, 'relations', 'csv', labels); const summary = {}; allInteractions.forEach(i => { const cp = i.counterparty; if (!summary[cp]) summary[cp] = {in:0,out:0,count:0,types:new Set()}; summary[cp].count++; summary[cp].types.add(i.txType); if(i.direction==='IN') summary[cp].in+=i.valueBTC; else summary[cp].out+=i.valueBTC; }); const sorted = Object.keys(summary).sort((a,b)=>(summary[b].in+summary[b].out)-(summary[a].in+summary[a].out)); const limited = sorted.slice(0,RELATION_DISPLAY_LIMIT); const displayLbls = new Map(limited.map(a=>[a,labels.get(a)]).filter(e=>e[1])); fullResponseText = `**Interaction Summary for \`${targetAddress}\` (${filterDescription}):**\n*(Top ${limited.length} of ${sorted.length} by volume)*\n\n`; limited.forEach((cp,i)=>{ const d=summary[cp]; const l=displayLbls.get(cp); const iBTC=d.in.toLocaleString(undefined,{maximumFractionDigits:8}); const oBTC=d.out.toLocaleString(undefined,{maximumFractionDigits:8}); const typs=Array.from(d.types).join(', ').replace(/_/g,' '); const line=`${i+1}. \`${cp}\`${l?` (*${l}*)`:''}: IN **${iBTC}** | OUT **${oBTC}** | (${d.count} txs) | *${typs}*\n`; if (fullResponseText.length+line.length<1900) fullResponseText+=line; else if (!fullResponseText.endsWith("...")) fullResponseText+="..."; }); if (sorted.length>limited.length) fullResponseText+=`\n...and ${sorted.length - limited.length} more.`; if (fileBuffer) fullResponseText+=`\n\n*See attached CSV for all ${allInteractions.length} interactions.*`; fullResponseText+=`\n*Types key: single=1:1, consolidation=many:1, distribution=1:many.*`; } }
             else if (requiresMostActiveCheck) { /* ... most active logic ... */ await thinkingMessage.edit(`⏳ Finding most active addresses...`); const allActive = await mongoHelper.getMostActiveAddresses(mongoFilter, MOST_ACTIVE_FETCH_LIMIT); if (!allActive?.length) { fullResponseText = `No significant activity found for: \`${filterDescription}\``; fileBuffer = null; } else { fileName = `most_active_${filterDescription.replace(/[^a-z0-9]/gi,'_')}.csv`; fileBuffer = generateDataFile(allActive, 'most_active', 'csv'); const limited = allActive.slice(0, MOST_ACTIVE_DISPLAY_LIMIT); fullResponseText = `**Most Active Addresses (${filterDescription}):**\n*(Top ${limited.length} of ${allActive.length} by Tx Count)*\n\n`; limited.forEach((item, idx) => { const inBTC = item.totalInBTC.toLocaleString(undefined,{maximumFractionDigits:4}); const outBTC = item.totalOutBTC.toLocaleString(undefined,{maximumFractionDigits:4}); const line = `${idx + 1}. \`${item.address}\` (${item.count} txs, IN: ${inBTC} BTC, OUT: ${outBTC} BTC)${item.label ? ` - *${item.label}*` : ''}\n`; if (fullResponseText.length + line.length < 1900) fullResponseText += line; else if (!fullResponseText.endsWith("...")) fullResponseText += "..."; }); if (allActive.length > limited.length) fullResponseText += `\n...and ${allActive.length - limited.length} more.`; if (fileBuffer) fullResponseText += `\n\n*See attached CSV for full details.*`; } }
